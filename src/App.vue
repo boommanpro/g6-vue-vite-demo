@@ -3,9 +3,9 @@
 </template>
 
 <script setup>
-import {onMounted} from 'vue';
+import { onMounted } from 'vue';
 
-import {Rect, Text} from '@antv/g';
+import { Rect, Text } from '@antv/g';
 import {
   Badge,
   BaseBehavior,
@@ -91,8 +91,8 @@ onMounted(() => {
     }
 
     isShowCollapse(attributes) {
-      const { collapsed, showIcon } = attributes;
-      return !collapsed && showIcon && this.childrenData.length > 0;
+      const { collapsed } = attributes;
+      return !collapsed;
     }
 
     getCollapseStyle(attributes) {
@@ -162,68 +162,6 @@ onMounted(() => {
       });
     }
 
-    getAddStyle(attributes) {
-      const { collapsed, showIcon, direction } = attributes;
-      if (collapsed || !showIcon) return false;
-      const [width, height] = this.getSize(attributes);
-      const color = '#ddd';
-
-      const offsetX = this.isShowCollapse(attributes) ? 24 : 12;
-      const isRoot = this.id === this.rootId;
-
-      return {
-        backgroundFill: '#fff',
-        backgroundHeight: 12,
-        backgroundLineWidth: 1,
-        backgroundStroke: color,
-        backgroundWidth: 12,
-        cursor: 'pointer',
-        fill: color,
-        fontFamily: 'iconfont',
-        fontSize: 8,
-        text: '\ue664',
-        textAlign: 'center',
-        x: isRoot ? width + 12 : direction === 'left' ? -offsetX : width + offsetX,
-        y: isRoot ? height / 2 : height,
-      };
-    }
-
-    getAddBarStyle(attributes) {
-      const { collapsed, showIcon, direction, color = '#1783FF' } = attributes;
-      if (collapsed || !showIcon) return false;
-      const [width, height] = this.getSize(attributes);
-
-      const offsetX = this.isShowCollapse(attributes) ? 12 : 0;
-      const isRoot = this.id === this.rootId;
-
-      const HEIGHT = 2;
-      const WIDTH = 6;
-
-      return {
-        cursor: 'pointer',
-        fill:
-            direction === 'left'
-                ? `linear-gradient(180deg, #fff 20%, ${color})`
-                : `linear-gradient(0deg, #fff 20%, ${color})`,
-        height: HEIGHT,
-        width: WIDTH,
-        x: isRoot ? width : direction === 'left' ? -offsetX - WIDTH : width + offsetX,
-        y: isRoot ? height / 2 - HEIGHT / 2 : height - HEIGHT / 2,
-        zIndex: -1,
-      };
-    }
-
-    drawAddShape(attributes, container) {
-      const addStyle = this.getAddStyle(attributes);
-      const addBarStyle = this.getAddBarStyle(attributes);
-      this.upsert('add-bar', Rect, addBarStyle, container);
-      const btn = this.upsert('add', Badge, addStyle, container);
-
-      this.forwardEvent(btn, CommonEvent.CLICK, (event) => {
-        event.stopPropagation();
-        this.context.graph.emit(TreeEvent.ADD_CHILD, { id: this.id, direction: attributes.direction });
-      });
-    }
 
     forwardEvent(target, type, listener) {
       if (target && !Reflect.has(target, '__bind__')) {
@@ -247,8 +185,6 @@ onMounted(() => {
       super.render(attributes, container);
 
       this.drawCollapseShape(attributes, container);
-      this.drawAddShape(attributes, container);
-
       this.drawCountShape(attributes, container);
     }
   }
@@ -410,64 +346,62 @@ onMounted(() => {
   };
 
   fetch('https://assets.antv.antgroup.com/g6/algorithm-category.json')
-      .then((res) => res.json())
-      .then((data) => {
-        const rootId = data.id;
+    .then((res) => res.json())
+    .then((data) => {
+      const rootId = data.id;
 
-        const graph = new Graph({
-          data: treeToGraphData(data),
-          node: {
-            type: 'mindmap',
-            style: function (d) {
-              const direction = getNodeSide(d, this.getParentData(idOf(d), 'tree'));
-              const isRoot = idOf(d) === rootId;
+      const graph = new Graph({
+        data: treeToGraphData(data),
+        node: {
+          type: 'mindmap',
+          style: function (d) {
+            const direction = getNodeSide(d, this.getParentData(idOf(d), 'tree'));
+            const isRoot = idOf(d) === rootId;
 
-              return {
-                direction,
-                labelText: idOf(d),
-                size: getNodeSize(idOf(d), isRoot),
-                labelFontFamily: 'Gill Sans',
-                // 通过设置节点标签背景来扩大交互区域 | Expand the interaction area by setting the node label background
-                labelBackground: true,
-                labelBackgroundFill: 'transparent',
-                labelPadding: direction === 'left' ? [2, 0, 10, 40] : [2, 40, 10, 0],
-                ...(isRoot ? RootNodeStyle : NodeStyle),
-              };
+            return {
+              direction,
+              labelText: idOf(d),
+              size: getNodeSize(idOf(d), isRoot),
+              labelFontFamily: 'Gill Sans',
+              // 通过设置节点标签背景来扩大交互区域 | Expand the interaction area by setting the node label background
+              labelBackground: true,
+              labelBackgroundFill: 'transparent',
+              labelPadding: direction === 'left' ? [2, 0, 10, 40] : [2, 40, 10, 0],
+              ...(isRoot ? RootNodeStyle : NodeStyle),
+            };
+          },
+        },
+        edge: {
+          type: 'mindmap',
+          style: {
+            lineWidth: 3,
+            stroke: function (data) {
+              return this.getNodeData(data.target).style.color || '#99ADD1';
             },
           },
-          edge: {
-            type: 'mindmap',
-            style: {
-              lineWidth: 3,
-              stroke: function (data) {
-                return this.getNodeData(data.target).style.color || '#99ADD1';
-              },
-            },
-          },
-          layout: {
-            type: 'mindmap',
-            direction: 'H',
-            getHeight: () => 30,
-            getWidth: (node) => getNodeWidth(node.id, node.id === rootId),
-            getVGap: () => 6,
-            getHGap: () => 60,
-            animation: false,
-          },
-          behaviors: ['drag-canvas', 'zoom-canvas', 'collapse-expand-tree'],
-          transforms: ['assign-color-by-branch'],
+        },
+        layout: {
+          type: 'mindmap',
+          direction: 'LR',
+          getHeight: () => 30,
+          getWidth: (node) => getNodeWidth(node.id, node.id === rootId),
+          getVGap: () => 6,
+          getHGap: () => 60,
           animation: false,
-        });
-
-        graph.once(GraphEvent.AFTER_RENDER, () => {
-          graph.fitView();
-        });
-
-        graph.render();
+        },
+        behaviors: ['drag-canvas', 'zoom-canvas', 'collapse-expand-tree'],
+        transforms: ['assign-color-by-branch'],
+        animation: false,
       });
+
+      graph.once(GraphEvent.AFTER_RENDER, () => {
+        graph.fitView();
+      });
+
+      graph.render();
+    });
 
 });
 </script>
 
-<style>
-
-</style>
+<style></style>
