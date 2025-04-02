@@ -74,7 +74,7 @@ onMounted(() => {
 
   class MindmapNode extends BaseNode {
     static defaultStyleProps = {
-      showIcon: false,
+      showIcon: true,
     };
 
     constructor(options) {
@@ -92,7 +92,7 @@ onMounted(() => {
 
     isShowCollapse(attributes) {
       const { collapsed } = attributes;
-      return !collapsed;
+      return !collapsed && this.childrenData?.length > 0;
     }
 
     getCollapseStyle(attributes) {
@@ -184,8 +184,10 @@ onMounted(() => {
     render(attributes = this.parsedAttributes, container = this) {
       super.render(attributes, container);
 
-      this.drawCollapseShape(attributes, container);
-      this.drawCountShape(attributes, container);
+      if (this.isShowCollapse(attributes)) {
+        this.drawCollapseShape(attributes, container);
+        this.drawCountShape(attributes, container);
+      }
     }
   }
 
@@ -220,8 +222,7 @@ onMounted(() => {
     bindEvents() {
       const { graph } = this.context;
 
-      graph.on(NodeEvent.POINTER_ENTER, this.showIcon);
-      graph.on(NodeEvent.POINTER_LEAVE, this.hideIcon);
+
       graph.on(TreeEvent.COLLAPSE_EXPAND, this.onCollapseExpand);
       graph.on(TreeEvent.ADD_CHILD, this.addChild);
     }
@@ -229,30 +230,14 @@ onMounted(() => {
     unbindEvents() {
       const { graph } = this.context;
 
-      graph.off(NodeEvent.POINTER_ENTER, this.showIcon);
-      graph.off(NodeEvent.POINTER_LEAVE, this.hideIcon);
+
       graph.off(TreeEvent.COLLAPSE_EXPAND, this.onCollapseExpand);
       graph.off(TreeEvent.ADD_CHILD, this.addChild);
     }
 
     status = 'idle';
 
-    showIcon = (event) => {
-      this.setIcon(event, true);
-    };
 
-    hideIcon = (event) => {
-      this.setIcon(event, false);
-    };
-
-    setIcon = (event, show) => {
-      if (this.status !== 'idle') return;
-      const { target } = event;
-      const id = target.id;
-      const { graph, element } = this.context;
-      graph.updateNodeData([{ id, style: { showIcon: show } }]);
-      element.draw({ animation: false, silence: true });
-    };
 
     onCollapseExpand = async (event) => {
       this.status = 'busy';
@@ -282,7 +267,7 @@ onMounted(() => {
         {
           id: event.id,
           children: [...(parent.children || []), datum.id],
-          style: { collapsed: false, showIcon: false },
+          style: { collapsed: false },
         },
       ]);
       await graph.render();
