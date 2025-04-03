@@ -56,8 +56,8 @@ onMounted(() => {
   document.head.appendChild(style);
 
   const RootNodeStyle = {
-    fill: '#EFF0F0',
-    labelFill: '#262626',
+    fill: '#020409',
+    labelFill: '#FFFFFF',
     labelFontSize: 24,
     labelFontWeight: 600,
     labelOffsetY: 8,
@@ -67,15 +67,19 @@ onMounted(() => {
   };
 
   const NodeStyle = {
-    fill: 'transparent',
+    labelOffsetY: 0,
+    labelFill: '#262626',
+    labelFontWeight: 600,
+    labelOffsetY: 4,
     labelPlacement: 'center',
+    ports: [{ placement: 'right' }],
+    radius: 8,
     labelFontSize: 16,
-    ports: [{ placement: 'right-bottom' }, { placement: 'left-bottom' }],
+    ports: [{ placement: 'right' }, { placement: 'left' }],
   };
 
   const TreeEvent = {
     COLLAPSE_EXPAND: 'collapse-expand',
-    ADD_CHILD: 'add-child',
   };
 
   let textShape;
@@ -117,6 +121,8 @@ onMounted(() => {
 
     isShowCollapse(attributes) {
       const { collapsed } = attributes;
+      // 添加判断条件，如果是根节点，则不显示折叠按钮
+      if (this.id === this.rootId) return false;
       return !collapsed && this.childrenData?.length > 0;
     }
 
@@ -125,8 +131,6 @@ onMounted(() => {
       if (!this.isShowCollapse(attributes)) return false;
       const [width, height] = this.getSize(attributes);
 
-      // 检查 color 属性值
-      console.log('Color for collapse button:', color);
 
       return {
         backgroundFill: color,
@@ -141,7 +145,7 @@ onMounted(() => {
         transform: [['rotate', -90]],
         visibility: showIcon ? 'visible' : 'hidden',
         x: width + 6,
-        y: height,
+        y: height - 14,
       };
     }
 
@@ -150,6 +154,7 @@ onMounted(() => {
       const btn = this.upsert('collapse-expand', Badge, iconStyle, container);
 
       this.forwardEvent(btn, CommonEvent.CLICK, (event) => {
+        console.log(event);
         event.stopPropagation();
         this.context.graph.emit(TreeEvent.COLLAPSE_EXPAND, {
           id: this.id,
@@ -250,18 +255,12 @@ onMounted(() => {
 
     bindEvents() {
       const { graph } = this.context;
-
-
       graph.on(TreeEvent.COLLAPSE_EXPAND, this.onCollapseExpand);
-      graph.on(TreeEvent.ADD_CHILD, this.addChild);
     }
 
     unbindEvents() {
       const { graph } = this.context;
-
-
       graph.off(TreeEvent.COLLAPSE_EXPAND, this.onCollapseExpand);
-      graph.off(TreeEvent.ADD_CHILD, this.addChild);
     }
 
     status = 'idle';
@@ -275,32 +274,6 @@ onMounted(() => {
       await graph.frontElement(id);
       if (collapsed) await graph.collapseElement(id);
       else await graph.expandElement(id);
-      this.status = 'idle';
-    };
-
-    addChild = async (event) => {
-      this.status = 'busy';
-      const {
-        onCreateChild = () => {
-          const currentTime = new Date(Date.now()).toLocaleString();
-          return { id: `New Node in ${currentTime}` };
-        },
-      } = this.options;
-      const { graph } = this.context;
-      const datum = onCreateChild(event.id);
-      const parent = graph.getNodeData(event.id);
-
-      graph.addNodeData([datum]);
-      graph.addEdgeData([{ source: event.id, target: datum.id }]);
-      graph.updateNodeData([
-        {
-          id: event.id,
-          children: [...(parent.children || []), datum.id],
-          style: { collapsed: false },
-        },
-      ]);
-      await graph.render();
-      await graph.focusElement(datum.id);
       this.status = 'idle';
     };
   }
@@ -324,6 +297,9 @@ onMounted(() => {
       // 第一层节点的color为firstLevelColor，第二层节点的color为secondLevelColor
       let cnt = 0;
       grapthData.nodes.forEach((node) => {
+        if (node.depth === 0) {
+          node.style = { color: RootNodeStyle.fill };
+        }
         if (node.depth === 1) {
           node.style = { color: firstLevelColor[cnt % firstLevelColor.length] };
           node.children.forEach((childId) => {
@@ -343,7 +319,7 @@ onMounted(() => {
           style: function (d) {
             const direction = getNodeSide(d, this.getParentData(idOf(d), 'tree'));
             const isRoot = idOf(d) === rootId;
-            console.log(d);
+            console.log(d)
             return {
               direction,
               labelText: idOf(d),
@@ -354,6 +330,7 @@ onMounted(() => {
               labelBackgroundFill: 'transparent',
               labelPadding: [2, 40, 10, 0],
               ...(isRoot ? RootNodeStyle : NodeStyle),
+              fill: d.style.color
             };
           },
         },
@@ -376,7 +353,6 @@ onMounted(() => {
           animation: false,
         },
         behaviors: ['drag-canvas', 'zoom-canvas', 'collapse-expand-tree'],
-        transforms: ['assign-color-by-branch'],
         animation: false,
       });
 
