@@ -24,6 +24,31 @@ import {
   treeToGraphData,
 } from '@antv/g6';
 
+const firstLevelColor = [
+  '#1783FF',
+  '#F08F56',
+  '#D580FF',
+  '#00C9C9',
+  '#7863FF',
+  '#DB9D0D',
+  '#60C42D',
+  '#FF80CA',
+  '#2491B3',
+  '#17C76F',
+];
+const secondLevelColor = [
+  '#1783FF',
+  '#F08F56',
+  '#D580FF',
+  '#00C9C9',
+  '#7863FF',
+  '#DB9D0D',
+  '#60C42D',
+  '#FF80CA',
+  '#2491B3',
+  '#17C76F',
+]
+
 onMounted(() => {
 
   const style = document.createElement('style');
@@ -37,7 +62,7 @@ onMounted(() => {
     labelFontWeight: 600,
     labelOffsetY: 8,
     labelPlacement: 'center',
-    ports: [{ placement: 'right' }, { placement: 'left' }],
+    ports: [{ placement: 'right' }],
     radius: 8,
   };
 
@@ -100,6 +125,9 @@ onMounted(() => {
       if (!this.isShowCollapse(attributes)) return false;
       const [width, height] = this.getSize(attributes);
 
+      // 检查 color 属性值
+      console.log('Color for collapse button:', color);
+
       return {
         backgroundFill: color,
         backgroundHeight: 12,
@@ -110,9 +138,9 @@ onMounted(() => {
         fontSize: 8,
         text: '\ue6e4',
         textAlign: 'center',
-        transform: direction === 'left' ? [['rotate', 90]] : [['rotate', -90]],
+        transform: [['rotate', -90]],
         visibility: showIcon ? 'visible' : 'hidden',
-        x: direction === 'left' ? -6 : width + 6,
+        x: width + 6,
         y: height,
       };
     }
@@ -144,7 +172,7 @@ onMounted(() => {
         fontSize: 8,
         text: count.toString(),
         textAlign: 'center',
-        x: direction === 'left' ? -6 : width + 6,
+        x: width + 6,
         y: height,
       };
     }
@@ -184,6 +212,7 @@ onMounted(() => {
     render(attributes = this.parsedAttributes, container = this) {
       super.render(attributes, container);
 
+      // 确保数据加载完成后再渲染折叠按钮
       if (this.isShowCollapse(attributes)) {
         this.drawCollapseShape(attributes, container);
         this.drawCountShape(attributes, container);
@@ -275,52 +304,9 @@ onMounted(() => {
       this.status = 'idle';
     };
   }
-
-  class AssignColorByBranch extends BaseTransform {
-    static defaultOptions = {
-      colors: [
-        '#1783FF',
-        '#F08F56',
-        '#D580FF',
-        '#00C9C9',
-        '#7863FF',
-        '#DB9D0D',
-        '#60C42D',
-        '#FF80CA',
-        '#2491B3',
-        '#17C76F',
-      ],
-    };
-
-    constructor(context, options) {
-      super(context, Object.assign({}, AssignColorByBranch.defaultOptions, options));
-    }
-
-    beforeDraw(input) {
-      const nodes = this.context.model.getNodeData();
-
-      if (nodes.length === 0) return input;
-
-      let colorIndex = 0;
-      const dfs = (nodeId, color) => {
-        const node = nodes.find((datum) => datum.id == nodeId);
-        if (!node) return;
-
-        node.style ||= {};
-        node.style.color = color || this.options.colors[colorIndex++ % this.options.colors.length];
-        node.children?.forEach((childId) => dfs(childId, node.style?.color));
-      };
-
-      nodes.filter((node) => node.depth === 1).forEach((rootNode) => dfs(rootNode.id));
-
-      return input;
-    }
-  }
-
   register(ExtensionCategory.NODE, 'mindmap', MindmapNode);
   register(ExtensionCategory.EDGE, 'mindmap', MindmapEdge);
   register(ExtensionCategory.BEHAVIOR, 'collapse-expand-tree', CollapseExpandTree);
-  register(ExtensionCategory.TRANSFORM, 'assign-color-by-branch', AssignColorByBranch);
 
   const getNodeSide = (nodeData, parentData) => {
     if (!parentData) return 'center';
@@ -333,16 +319,31 @@ onMounted(() => {
   fetch('https://assets.antv.antgroup.com/g6/algorithm-category.json')
     .then((res) => res.json())
     .then((data) => {
+      let grapthData = treeToGraphData(data);
+      //对grapthData进行预处理，根据层级增加color字段，
+      // 第一层节点的color为firstLevelColor，第二层节点的color为secondLevelColor
+      let cnt = 0;
+      grapthData.nodes.forEach((node) => {
+        if (node.depth === 1) {
+          node.style = { color: firstLevelColor[cnt % firstLevelColor.length] };
+          node.children.forEach((childId) => {
+            const childNode = grapthData.nodes.find((node) => node.id === childId);
+            childNode.style = { color: secondLevelColor[cnt % secondLevelColor.length] };
+          });
+          cnt++;
+        }
+      })
+
       const rootId = data.id;
 
       const graph = new Graph({
-        data: treeToGraphData(data),
+        data: grapthData,
         node: {
           type: 'mindmap',
           style: function (d) {
             const direction = getNodeSide(d, this.getParentData(idOf(d), 'tree'));
             const isRoot = idOf(d) === rootId;
-
+            console.log(d);
             return {
               direction,
               labelText: idOf(d),
@@ -351,7 +352,7 @@ onMounted(() => {
               // 通过设置节点标签背景来扩大交互区域 | Expand the interaction area by setting the node label background
               labelBackground: true,
               labelBackgroundFill: 'transparent',
-              labelPadding: direction === 'left' ? [2, 0, 10, 40] : [2, 40, 10, 0],
+              labelPadding: [2, 40, 10, 0],
               ...(isRoot ? RootNodeStyle : NodeStyle),
             };
           },
