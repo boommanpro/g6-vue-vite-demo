@@ -178,7 +178,7 @@ onMounted(() => {
         text: count.toString(),
         textAlign: 'center',
         x: width + 6,
-        y: height,
+        y: height - 14,
       };
     }
 
@@ -218,10 +218,8 @@ onMounted(() => {
       super.render(attributes, container);
 
       // 确保数据加载完成后再渲染折叠按钮
-      if (this.isShowCollapse(attributes)) {
-        this.drawCollapseShape(attributes, container);
-        this.drawCountShape(attributes, container);
-      }
+      this.drawCollapseShape(attributes, container);
+      this.drawCountShape(attributes, container);
     }
   }
 
