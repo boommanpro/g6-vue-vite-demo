@@ -37,7 +37,6 @@ const firstLevelColor = [
   '#17C76F',
 ];
 const secondLevelColor = [
-  '#1783FF',
   '#F08F56',
   '#D580FF',
   '#00C9C9',
@@ -47,6 +46,8 @@ const secondLevelColor = [
   '#FF80CA',
   '#2491B3',
   '#17C76F',
+  '#1783FF',
+
 ]
 
 onMounted(() => {
@@ -127,6 +128,7 @@ onMounted(() => {
     }
 
     getCollapseStyle(attributes) {
+      // console.log("getCollapseStyle")
       const { showIcon, color, direction } = attributes;
       if (!this.isShowCollapse(attributes)) return false;
       const [width, height] = this.getSize(attributes);
@@ -150,17 +152,18 @@ onMounted(() => {
     }
 
     drawCollapseShape(attributes, container) {
-      const iconStyle = this.getCollapseStyle(attributes);
-      const btn = this.upsert('collapse-expand', Badge, iconStyle, container);
-
-      this.forwardEvent(btn, CommonEvent.CLICK, (event) => {
-        console.log(event);
-        event.stopPropagation();
-        this.context.graph.emit(TreeEvent.COLLAPSE_EXPAND, {
-          id: this.id,
-          collapsed: !attributes.collapsed,
+      if (!attributes.collapsed) {
+        const iconStyle = this.getCollapseStyle(attributes);
+        const btn = this.upsert('collapse-expand', Badge, iconStyle, container);
+        this.forwardEvent(btn, CommonEvent.CLICK, (event) => {
+          event.stopPropagation();
+          this.context.graph.emit(TreeEvent.COLLAPSE_EXPAND, {
+            id: this.id,
+            collapsed: !attributes.collapsed,
+          });
         });
-      });
+      }
+
     }
 
     getCountStyle(attributes) {
@@ -179,20 +182,23 @@ onMounted(() => {
         textAlign: 'center',
         x: width + 6,
         y: height - 14,
+        transform: [['rotate', 0]],
       };
     }
 
     drawCountShape(attributes, container) {
-      const countStyle = this.getCountStyle(attributes);
-      const btn = this.upsert('count', Badge, countStyle, container);
-
-      this.forwardEvent(btn, CommonEvent.CLICK, (event) => {
-        event.stopPropagation();
-        this.context.graph.emit(TreeEvent.COLLAPSE_EXPAND, {
-          id: this.id,
-          collapsed: false,
+      if (attributes.collapsed) {
+        const countStyle = this.getCountStyle(attributes);
+        const btn = this.upsert('collapse-expand', Badge, countStyle, container);
+        this.forwardEvent(btn, CommonEvent.CLICK, (event) => {
+          event.stopPropagation();
+          this.context.graph.emit(TreeEvent.COLLAPSE_EXPAND, {
+            id: this.id,
+            collapsed: false,
+          });
         });
-      });
+      }
+
     }
 
 
@@ -215,11 +221,13 @@ onMounted(() => {
     }
 
     render(attributes = this.parsedAttributes, container = this) {
+      console.log("badge render 开始", this.id);
       super.render(attributes, container);
 
       // 确保数据加载完成后再渲染折叠按钮
       this.drawCollapseShape(attributes, container);
       this.drawCountShape(attributes, container);
+      console.log("badge render 结束", this.id);
     }
   }
 
@@ -252,27 +260,24 @@ onMounted(() => {
     }
 
     bindEvents() {
-      const { graph } = this.context;
-      graph.on(TreeEvent.COLLAPSE_EXPAND, this.onCollapseExpand);
+      this.context.graph.on(TreeEvent.COLLAPSE_EXPAND, this.onCollapseExpand);
     }
 
     unbindEvents() {
-      const { graph } = this.context;
-      graph.off(TreeEvent.COLLAPSE_EXPAND, this.onCollapseExpand);
+      this.context.graph.off(TreeEvent.COLLAPSE_EXPAND, this.onCollapseExpand);
     }
 
-    status = 'idle';
 
 
 
     onCollapseExpand = async (event) => {
-      this.status = 'busy';
+      console.log("折叠事件开始", event);
       const { id, collapsed } = event;
       const { graph } = this.context;
       await graph.frontElement(id);
       if (collapsed) await graph.collapseElement(id);
       else await graph.expandElement(id);
-      this.status = 'idle';
+      console.log("折叠事件结束", event);
     };
   }
   register(ExtensionCategory.NODE, 'mindmap', MindmapNode);
@@ -287,7 +292,7 @@ onMounted(() => {
     return parentPositionX > nodePositionX ? 'left' : 'right';
   };
 
-  fetch('https://assets.antv.antgroup.com/g6/algorithm-category.json')
+  fetch('/data.json')
     .then((res) => res.json())
     .then((data) => {
       let grapthData = treeToGraphData(data);
@@ -305,6 +310,8 @@ onMounted(() => {
             childNode.style = { color: secondLevelColor[cnt % secondLevelColor.length] };
           });
           cnt++;
+        } else {
+          node.style = { color: firstLevelColor[cnt % firstLevelColor.length] };
         }
       })
 
