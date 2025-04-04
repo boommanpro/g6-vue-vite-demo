@@ -1,3 +1,4 @@
+
 import { Rect, Text } from '@antv/g';
 import {
     Badge,
@@ -52,15 +53,13 @@ const RootNodeStyle = {
     ports: [{ placement: 'right' }],
     radius: 8,
 };
-
+// @ts-ignore
 const NodeStyle = {
-    labelOffsetY: 0,
     labelFill: '#262626',
     cursor: 'pointer',
     labelFontWeight: 600,
     labelOffsetY: 4,
     labelPlacement: 'center',
-    ports: [{ placement: 'right' }],
     radius: 8,
     labelFontSize: 16,
     ports: [{ placement: 'right' }, { placement: 'left' }],
@@ -377,14 +376,14 @@ const getNodeSide = (nodeData, parentData) => {
 export const processAndRenderGraph = (data) => {
     let grapthData = treeToGraphData(data);
     let cnt = 0;
-    grapthData.nodes.forEach((node) => {
+    grapthData.nodes?.forEach((node) => {
         if (node.depth === 0) {
             node.style = { color: RootNodeStyle.fill };
         }
         if (node.depth === 1) {
             node.style = { color: firstLevelColor[cnt % firstLevelColor.length] };
-            node.children.forEach((childId) => {
-                const childNode = grapthData.nodes.find((node) => node.id === childId);
+            node.children?.forEach((childId) => {
+                const childNode = grapthData.nodes?.find((node) => node.id === childId);
                 childNode.style = { color: secondLevelColor[cnt % secondLevelColor.length] };
             });
             cnt++;
