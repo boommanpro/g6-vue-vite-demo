@@ -47,11 +47,9 @@ const secondLevelColor = [
   '#2491B3',
   '#17C76F',
   '#1783FF',
-
-]
+];
 
 onMounted(() => {
-
   const style = document.createElement('style');
   style.innerHTML = `@import url('${iconfont.css}');`;
   document.head.appendChild(style);
@@ -70,6 +68,7 @@ onMounted(() => {
   const NodeStyle = {
     labelOffsetY: 0,
     labelFill: '#262626',
+    cursor: 'pointer',
     labelFontWeight: 600,
     labelOffsetY: 4,
     labelPlacement: 'center',
@@ -120,19 +119,17 @@ onMounted(() => {
       return idOf(this.context.model.getRootsData()[0]);
     }
 
-    isShowCollapse(attributes) {
-      const { collapsed } = attributes;
+    isShowCollapse(data) {
+      const { collapsed } = data;
       // 添加判断条件，如果是根节点，则不显示折叠按钮
       if (this.id === this.rootId) return false;
       return !collapsed && this.childrenData?.length > 0;
     }
 
-    getCollapseStyle(attributes) {
-      // console.log("getCollapseStyle")
-      const { showIcon, color, direction } = attributes;
-      if (!this.isShowCollapse(attributes)) return false;
-      const [width, height] = this.getSize(attributes);
-
+    getCollapseStyle(data) {
+      const { showIcon, color, direction } = data;
+      if (!this.isShowCollapse(data)) return false;
+      const [width, height] = this.getSize(data);
 
       return {
         backgroundFill: color,
@@ -151,26 +148,16 @@ onMounted(() => {
       };
     }
 
-    drawCollapseShape(attributes, container) {
-      if (!attributes.collapsed) {
-        const iconStyle = this.getCollapseStyle(attributes);
-        const btn = this.upsert('collapse-expand', Badge, iconStyle, container);
-        this.forwardEvent(btn, CommonEvent.CLICK, (event) => {
-          event.stopPropagation();
-          this.context.graph.emit(TreeEvent.COLLAPSE_EXPAND, {
-            id: this.id,
-            collapsed: !attributes.collapsed,
-          });
-        });
-      }
-
+    drawCollapseShape(data, container) {
+      const iconStyle = this.getCollapseStyle(data);
+      this.upsert('collapse-expand', Badge, iconStyle, container);
     }
 
-    getCountStyle(attributes) {
-      const { collapsed, color, direction } = attributes;
+    getCountStyle(data) {
+      const { collapsed, color, direction } = data;
       const count = this.context.model.getDescendantsData(this.id).length;
       if (!collapsed || count === 0) return false;
-      const [width, height] = this.getSize(attributes);
+      const [width, height] = this.getSize(data);
       return {
         backgroundFill: color,
         backgroundHeight: 12,
@@ -186,21 +173,13 @@ onMounted(() => {
       };
     }
 
-    drawCountShape(attributes, container) {
-      if (attributes.collapsed) {
-        const countStyle = this.getCountStyle(attributes);
-        const btn = this.upsert('collapse-expand', Badge, countStyle, container);
-        this.forwardEvent(btn, CommonEvent.CLICK, (event) => {
-          event.stopPropagation();
-          this.context.graph.emit(TreeEvent.COLLAPSE_EXPAND, {
-            id: this.id,
-            collapsed: false,
-          });
-        });
+    drawCountShape(data, container) {
+      const { collapsed } = data;
+      if (collapsed) {
+        const countStyle = this.getCountStyle(data);
+        this.upsert('collapse-expand', Badge, countStyle, container);
       }
-
     }
-
 
     forwardEvent(target, type, listener) {
       if (target && !Reflect.has(target, '__bind__')) {
@@ -209,25 +188,22 @@ onMounted(() => {
       }
     }
 
-    getKeyStyle(attributes) {
-      const [width, height] = this.getSize(attributes);
-      const keyShape = super.getKeyStyle(attributes);
+    getKeyStyle(data) {
+      const [width, height] = this.getSize(data);
+      const keyShape = super.getKeyStyle(data);
       return { width, height, ...keyShape };
     }
 
-    drawKeyShape(attributes, container) {
-      const keyStyle = this.getKeyStyle(attributes);
+    drawKeyShape(data, container) {
+      const keyStyle = this.getKeyStyle(data);
       return this.upsert('key', Rect, keyStyle, container);
     }
 
-    render(attributes = this.parsedAttributes, container = this) {
-      console.log("badge render 开始", this.id);
-      super.render(attributes, container);
-
+    render(data = this.parsedAttributes, container = this) {
+      super.render(data, container);
       // 确保数据加载完成后再渲染折叠按钮
-      this.drawCollapseShape(attributes, container);
-      this.drawCountShape(attributes, container);
-      console.log("badge render 结束", this.id);
+      this.drawCollapseShape(data, container);
+      this.drawCountShape(data, container);
     }
   }
 
@@ -236,12 +212,12 @@ onMounted(() => {
       return idOf(this.context.model.getRootsData()[0]);
     }
 
-    getKeyPath(attributes) {
-      const path = super.getKeyPath(attributes);
+    getKeyPath(data) {
+      const path = super.getKeyPath(data);
       const isRoot = this.targetNode.id === this.rootId;
       const labelWidth = getNodeWidth(this.targetNode.id, isRoot);
 
-      const [, tp] = this.getEndpoints(attributes);
+      const [, tp] = this.getEndpoints(data);
       const sign = this.sourceNode.getCenter()[0] < this.targetNode.getCenter()[0] ? 1 : -1;
       return [...path, ['L', tp[0] + labelWidth * sign, tp[1]]];
     }
@@ -260,6 +236,18 @@ onMounted(() => {
     }
 
     bindEvents() {
+      let graph = this.context.graph;
+      this.context.graph.on(NodeEvent.CLICK, (e) => {
+        let id = e.target.id;
+        //如果是root节点，则不执行折叠操作
+        if (id === this.context.model.getRootsData()[0].id) return;
+        const nodeData = graph.getNodeData(id);
+        const { collapsed } = nodeData;
+        graph.emit(TreeEvent.COLLAPSE_EXPAND, {
+          id,
+          collapsed: !collapsed,
+        });
+      });
       this.context.graph.on(TreeEvent.COLLAPSE_EXPAND, this.onCollapseExpand);
     }
 
@@ -267,19 +255,18 @@ onMounted(() => {
       this.context.graph.off(TreeEvent.COLLAPSE_EXPAND, this.onCollapseExpand);
     }
 
-
-
-
     onCollapseExpand = async (event) => {
-      console.log("折叠事件开始", event);
       const { id, collapsed } = event;
       const { graph } = this.context;
+      // 获取collapsed的状态
+      const nodeData = graph.getNodeData(id);
+      nodeData.collapsed = collapsed;
       await graph.frontElement(id);
       if (collapsed) await graph.collapseElement(id);
       else await graph.expandElement(id);
-      console.log("折叠事件结束", event);
     };
   }
+
   register(ExtensionCategory.NODE, 'mindmap', MindmapNode);
   register(ExtensionCategory.EDGE, 'mindmap', MindmapEdge);
   register(ExtensionCategory.BEHAVIOR, 'collapse-expand-tree', CollapseExpandTree);
@@ -296,8 +283,6 @@ onMounted(() => {
     .then((res) => res.json())
     .then((data) => {
       let grapthData = treeToGraphData(data);
-      //对grapthData进行预处理，根据层级增加color字段，
-      // 第一层节点的color为firstLevelColor，第二层节点的color为secondLevelColor
       let cnt = 0;
       grapthData.nodes.forEach((node) => {
         if (node.depth === 0) {
@@ -313,7 +298,8 @@ onMounted(() => {
         } else {
           node.style = { color: firstLevelColor[cnt % firstLevelColor.length] };
         }
-      })
+        node.collapsed = false;
+      });
 
       const rootId = data.id;
 
@@ -324,7 +310,7 @@ onMounted(() => {
           style: function (d) {
             const direction = getNodeSide(d, this.getParentData(idOf(d), 'tree'));
             const isRoot = idOf(d) === rootId;
-            console.log(d)
+            console.log(d);
             return {
               direction,
               labelText: idOf(d),
@@ -335,7 +321,7 @@ onMounted(() => {
               labelBackgroundFill: 'transparent',
               labelPadding: [2, 40, 10, 0],
               ...(isRoot ? RootNodeStyle : NodeStyle),
-              fill: d.style.color
+              fill: d.style.color,
             };
           },
         },
@@ -367,7 +353,6 @@ onMounted(() => {
 
       graph.render();
     });
-
 });
 </script>
 
