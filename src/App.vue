@@ -292,7 +292,7 @@ onMounted(() => {
     return parentPositionX > nodePositionX ? 'left' : 'right';
   };
 
-  fetch('/data.json')
+  fetch('./data.json')
     .then((res) => res.json())
     .then((data) => {
       let grapthData = treeToGraphData(data);
