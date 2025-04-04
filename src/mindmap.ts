@@ -4,18 +4,15 @@ import {
     Badge,
     BaseBehavior,
     BaseNode,
-    BaseTransform,
-    CommonEvent,
     CubicHorizontal,
     ExtensionCategory,
     Graph,
     GraphEvent,
-    iconfont,
     idOf,
     NodeEvent,
     positionOf,
     register,
-    treeToGraphData,
+    treeToGraphData
 } from '@antv/g6';
 
 const firstLevelColor = [
