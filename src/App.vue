@@ -9,7 +9,12 @@ import {
   iconfont
 } from '@antv/g6';
 
-import { fetchData, processAndRenderGraph } from './mindmap';
+import { processAndRenderGraph } from './mindmap';
+
+const fetchData = () => {
+  return fetch('./data.json')
+    .then((res) => res.json());
+};
 
 onMounted(() => {
   const style = document.createElement('style');
@@ -17,8 +22,8 @@ onMounted(() => {
   document.head.appendChild(style);
 
   fetchData()
-    .then(() => {
-      processAndRenderGraph();
+    .then((data) => {
+      processAndRenderGraph(data);
     });
 });
 </script>
