@@ -310,7 +310,6 @@ onMounted(() => {
           style: function (d) {
             const direction = getNodeSide(d, this.getParentData(idOf(d), 'tree'));
             const isRoot = idOf(d) === rootId;
-            console.log(d);
             return {
               direction,
               labelText: idOf(d),
