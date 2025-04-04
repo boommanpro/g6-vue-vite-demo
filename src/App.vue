@@ -10,8 +10,6 @@ import {
   Badge,
   BaseBehavior,
   BaseNode,
-  BaseTransform,
-  CommonEvent,
   CubicHorizontal,
   ExtensionCategory,
   Graph,
@@ -21,33 +19,10 @@ import {
   NodeEvent,
   positionOf,
   register,
-  treeToGraphData,
+  treeToGraphData
 } from '@antv/g6';
 
-const firstLevelColor = [
-  '#1783FF',
-  '#F08F56',
-  '#D580FF',
-  '#00C9C9',
-  '#7863FF',
-  '#DB9D0D',
-  '#60C42D',
-  '#FF80CA',
-  '#2491B3',
-  '#17C76F',
-];
-const secondLevelColor = [
-  '#F08F56',
-  '#D580FF',
-  '#00C9C9',
-  '#7863FF',
-  '#DB9D0D',
-  '#60C42D',
-  '#FF80CA',
-  '#2491B3',
-  '#17C76F',
-  '#1783FF',
-];
+import { firstLevelColor, secondLevelColor } from './mindmap';
 
 onMounted(() => {
   const style = document.createElement('style');
