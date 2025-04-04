@@ -367,15 +367,7 @@ const getNodeSide = (nodeData, parentData) => {
 };
 
 
-export {
-    Badge,
-    BaseBehavior,
-    BaseNode,
-    BaseTransform, CollapseExpandTree, CommonEvent,
-    CubicHorizontal,
-    ExtensionCategory, firstLevelColor, getNodeSide, getNodeSize, getNodeWidth, Graph,
-    GraphEvent, iconfont, idOf, measureText, MindmapEdge, MindmapNode, NodeEvent, NodeStyle, positionOf, Rect, register, RootNodeStyle, secondLevelColor, Text, TreeEvent, treeToGraphData
-};
+
 
 /**
  * 处理数据并渲染图形
@@ -448,3 +440,5 @@ export const processAndRenderGraph = (data) => {
     });
     graph.render();
 };
+
+
