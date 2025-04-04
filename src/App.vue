@@ -81,56 +81,90 @@ onMounted(() => {
   const TreeEvent = {
     COLLAPSE_EXPAND: 'collapse-expand',
   };
-
+  // 用于测量文本宽度的变量
   let textShape;
+  /**
+   * 测量文本的宽度
+   * @param {Object} text - 文本的样式对象
+   * @returns {number} - 文本的宽度
+   */
   const measureText = (text) => {
     if (!textShape) textShape = new Text({ style: text });
     textShape.attr(text);
     return textShape.getBBox().width;
   };
-
+  /**
+   * 获取节点的宽度
+   * @param {string} nodeId - 节点的ID
+   * @param {boolean} isRoot - 是否为根节点
+   * @returns {number} - 节点的宽度
+   */
   const getNodeWidth = (nodeId, isRoot) => {
     const padding = isRoot ? 40 : 30;
     const nodeStyle = isRoot ? RootNodeStyle : NodeStyle;
     return measureText({ text: nodeId, fontSize: nodeStyle.labelFontSize, fontFamily: 'Gill Sans' }) + padding;
   };
-
+  /**
+   * 获取节点的大小
+   * @param {string} nodeId - 节点的ID
+   * @param {boolean} isRoot - 是否为根节点
+   * @returns {Array<number>} - 节点的宽度和高度
+   */
   const getNodeSize = (nodeId, isRoot) => {
     const width = getNodeWidth(nodeId, isRoot);
     const height = isRoot ? 48 : 32;
     return [width, height];
   };
-
+  /**
+   * 思维导图节点类
+   */
   class MindmapNode extends BaseNode {
+    // 默认样式属性
     static defaultStyleProps = {
       showIcon: true,
     };
-
+    /**
+     * 构造函数
+     * @param {Object} options - 节点的配置选项
+     */
     constructor(options) {
       Object.assign(options.style, MindmapNode.defaultStyleProps);
       super(options);
     }
-
+    /**
+     * 获取子节点数据
+     * @returns {Array<Object>} - 子节点数据数组
+     */
     get childrenData() {
       return this.context.model.getChildrenData(this.id);
     }
-
+    /**
+     * 获取根节点的ID
+     * @returns {string} - 根节点的ID
+     */
     get rootId() {
       return idOf(this.context.model.getRootsData()[0]);
     }
-
+    /**
+     * 判断是否显示折叠按钮
+     * @param {Object} data - 节点的数据
+     * @returns {boolean} - 是否显示折叠按钮
+     */
     isShowCollapse(data) {
       const { collapsed } = data;
-      // 添加判断条件，如果是根节点，则不显示折叠按钮
+      // 如果是根节点，则不显示折叠按钮
       if (this.id === this.rootId) return false;
       return !collapsed && this.childrenData?.length > 0;
     }
-
+    /**
+     * 获取折叠按钮的样式
+     * @param {Object} data - 节点的数据
+     * @returns {Object|boolean} - 折叠按钮的样式对象，如果不显示则返回false
+     */
     getCollapseStyle(data) {
       const { showIcon, color, direction } = data;
       if (!this.isShowCollapse(data)) return false;
       const [width, height] = this.getSize(data);
-
       return {
         backgroundFill: color,
         backgroundHeight: 12,
@@ -147,12 +181,20 @@ onMounted(() => {
         y: height - 14,
       };
     }
-
+    /**
+     * 绘制折叠按钮形状
+     * @param {Object} data - 节点的数据
+     * @param {Object} container - 容器对象
+     */
     drawCollapseShape(data, container) {
       const iconStyle = this.getCollapseStyle(data);
       this.upsert('collapse-expand', Badge, iconStyle, container);
     }
-
+    /**
+     * 获取计数按钮的样式
+     * @param {Object} data - 节点的数据
+     * @returns {Object|boolean} - 计数按钮的样式对象，如果不显示则返回false
+     */
     getCountStyle(data) {
       const { collapsed, color, direction } = data;
       const count = this.context.model.getDescendantsData(this.id).length;
@@ -172,7 +214,11 @@ onMounted(() => {
         transform: [['rotate', 0]],
       };
     }
-
+    /**
+     * 绘制计数按钮形状
+     * @param {Object} data - 节点的数据
+     * @param {Object} container - 容器对象
+     */
     drawCountShape(data, container) {
       const { collapsed } = data;
       if (collapsed) {
@@ -180,25 +226,43 @@ onMounted(() => {
         this.upsert('collapse-expand', Badge, countStyle, container);
       }
     }
-
+    /**
+     * 转发事件
+     * @param {Object} target - 目标对象
+     * @param {string} type - 事件类型
+     * @param {Function} listener - 事件监听器
+     */
     forwardEvent(target, type, listener) {
       if (target && !Reflect.has(target, '__bind__')) {
         Reflect.set(target, '__bind__', true);
         target.addEventListener(type, listener);
       }
     }
-
+    /**
+     * 获取关键形状的样式
+     * @param {Object} data - 节点的数据
+     * @returns {Object} - 关键形状的样式对象
+     */
     getKeyStyle(data) {
       const [width, height] = this.getSize(data);
       const keyShape = super.getKeyStyle(data);
       return { width, height, ...keyShape };
     }
-
+    /**
+     * 绘制关键形状
+     * @param {Object} data - 节点的数据
+     * @param {Object} container - 容器对象
+     * @returns {Object} - 绘制的关键形状对象
+     */
     drawKeyShape(data, container) {
       const keyStyle = this.getKeyStyle(data);
       return this.upsert('key', Rect, keyStyle, container);
     }
-
+    /**
+     * 渲染节点
+     * @param {Object} data - 节点的数据
+     * @param {Object} container - 容器对象
+     */
     render(data = this.parsedAttributes, container = this) {
       super.render(data, container);
       // 确保数据加载完成后再渲染折叠按钮
@@ -206,40 +270,61 @@ onMounted(() => {
       this.drawCountShape(data, container);
     }
   }
-
+  /**
+   * 思维导图边类
+   */
   class MindmapEdge extends CubicHorizontal {
+    /**
+     * 获取根节点的ID
+     * @returns {string} - 根节点的ID
+     */
     get rootId() {
       return idOf(this.context.model.getRootsData()[0]);
     }
-
+    /**
+     * 获取关键路径
+     * @param {Object} data - 边的数据
+     * @returns {Array<Array<number>>} - 关键路径数组
+     */
     getKeyPath(data) {
       const path = super.getKeyPath(data);
       const isRoot = this.targetNode.id === this.rootId;
       const labelWidth = getNodeWidth(this.targetNode.id, isRoot);
-
       const [, tp] = this.getEndpoints(data);
       const sign = this.sourceNode.getCenter()[0] < this.targetNode.getCenter()[0] ? 1 : -1;
       return [...path, ['L', tp[0] + labelWidth * sign, tp[1]]];
     }
   }
-
+  /**
+   * 折叠展开树行为类
+   */
   class CollapseExpandTree extends BaseBehavior {
+    /**
+     * 构造函数
+     * @param {Object} context - 上下文对象
+     * @param {Object} options - 配置选项
+     */
     constructor(context, options) {
       super(context, options);
       this.bindEvents();
     }
-
+    /**
+     * 更新配置选项
+     * @param {Object} options - 配置选项
+     */
     update(options) {
       this.unbindEvents();
       super.update(options);
       this.bindEvents();
     }
-
+    /**
+     * 绑定事件
+     */
     bindEvents() {
       let graph = this.context.graph;
       this.context.graph.on(NodeEvent.CLICK, (e) => {
         let id = e.target.id;
-        //如果是root节点，则不执行折叠操作
+        // 如果是root节点，则不执行折叠操作
         if (id === this.context.model.getRootsData()[0].id) return;
         const nodeData = graph.getNodeData(id);
         const { collapsed } = nodeData;
@@ -250,11 +335,16 @@ onMounted(() => {
       });
       this.context.graph.on(TreeEvent.COLLAPSE_EXPAND, this.onCollapseExpand);
     }
-
+    /**
+     * 解绑事件
+     */
     unbindEvents() {
       this.context.graph.off(TreeEvent.COLLAPSE_EXPAND, this.onCollapseExpand);
     }
-
+    /**
+     * 处理折叠展开事件
+     * @param {Object} event - 事件对象
+     */
     onCollapseExpand = async (event) => {
       const { id, collapsed } = event;
       const { graph } = this.context;
@@ -266,24 +356,31 @@ onMounted(() => {
       else await graph.expandElement(id);
     };
   }
-
+  // 注册思维导图节点
   register(ExtensionCategory.NODE, 'mindmap', MindmapNode);
+  // 注册思维导图边
   register(ExtensionCategory.EDGE, 'mindmap', MindmapEdge);
+  // 注册折叠展开树行为
   register(ExtensionCategory.BEHAVIOR, 'collapse-expand-tree', CollapseExpandTree);
-
+  /**
+   * 获取节点的侧边位置
+   * @param {Object} nodeData - 节点的数据
+   * @param {Object} parentData - 父节点的数据
+   * @returns {string} - 节点的侧边位置（left或right）
+   */
   const getNodeSide = (nodeData, parentData) => {
     if (!parentData) return 'center';
-
     const nodePositionX = positionOf(nodeData)[0];
     const parentPositionX = positionOf(parentData)[0];
     return parentPositionX > nodePositionX ? 'left' : 'right';
   };
-
+  // 从data.json文件中获取数据
   fetch('./data.json')
     .then((res) => res.json())
     .then((data) => {
       let grapthData = treeToGraphData(data);
       let cnt = 0;
+      // 遍历节点数据，设置节点样式
       grapthData.nodes.forEach((node) => {
         if (node.depth === 0) {
           node.style = { color: RootNodeStyle.fill };
@@ -300,9 +397,8 @@ onMounted(() => {
         }
         node.collapsed = false;
       });
-
       const rootId = data.id;
-
+      // 创建图对象
       const graph = new Graph({
         data: grapthData,
         node: {
@@ -345,11 +441,11 @@ onMounted(() => {
         behaviors: ['drag-canvas', 'zoom-canvas', 'collapse-expand-tree'],
         animation: false,
       });
-
+      // 图渲染完成后，调整视图以适应窗口
       graph.once(GraphEvent.AFTER_RENDER, () => {
         graph.fitView();
       });
-
+      // 渲染图
       graph.render();
     });
 });
